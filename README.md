@@ -1,16 +1,67 @@
-# React + Vite
+# Done App ✅
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Modern, kullanıcı dostu ve özelliklerle dolu bir görev yönetim uygulaması. Günlük işlerinizi organize edin, üretkenliğinizi artırın ve hedeflerinize ulaşın.
 
-Currently, two official plugins are available:
+![Done App Screenshot](https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?auto=format&fit=crop&q=80&w=2072&ixlib=rb-4.0.3)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## 🌟 Özellikler
 
-## React Compiler
+Done App, basit bir yapılacaklar listesinden çok daha fazlasını sunar:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+*   **📝 Gelişmiş Görev Yönetimi:** Görevlerinizi ekleyin, düzenleyin, silin ve tamamlandı olarak işaretleyin.
+*   **📂 Kategoriler:** İşlerinizi Kişisel, İş, Alışveriş ve Sağlık gibi kategorilere ayırarak düzenli tutun.
+*   **⚡ Önceliklendirme:** Görevlerinize Düşük, Orta veya Yüksek öncelik atayarak neyin önemli olduğuna karar verin.
+*   **📋 Alt Görevler:** Karmaşık görevleri daha küçük, yönetilebilir alt görevlere bölün.
+*   **🖱️ Sürükle ve Bırak:** Görevlerinizi sürükleyip bırakarak kolayca sıralayın ve önceliklendirin.
+*   **🍅 Pomodoro Sayacı:** Entegre Pomodoro sayacı ile odaklanma sürelerinizi yönetin ve verimliliğinizi artırın.
+*   **🌓 Karanlık/Aydınlık Mod:** Göz yormayan karanlık mod veya ferah aydınlık mod arasında istediğiniz zaman geçiş yapın.
+*   **📱 Responsive Tasarım:** Hem masaüstü hem de mobil cihazlarda kusursuz deneyim.
+*   **🔒 Güvenli Giriş & Senkronizasyon:** Supabase entegrasyonu ile verilerinizi bulutta saklayın veya misafir modu ile yerel olarak kullanın.
+*   **🎉 Motivasyon:** Görevleri tamamladığınızda konfetilerle kutlayın!
 
-## Expanding the ESLint configuration
+## 🛠️ Teknolojiler
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Bu proje, modern web teknolojileri kullanılarak geliştirilmiştir:
+
+*   **[React](https://react.dev/):** Kullanıcı arayüzü için JavaScript kütüphanesi.
+*   **[Vite](https://vitejs.dev/):** Hızlı ve modern frontend geliştirme aracı.
+*   **[Tailwind CSS](https://tailwindcss.com/):** Hızlı ve esnek stil işlemleri için CSS framework'ü.
+*   **[Supabase](https://supabase.com/):** Backend-as-a-Service (Veritabanı ve Kimlik Doğrulama).
+*   **[dnd-kit](https://dndkit.com/):** Sürükle ve bırak işlevselliği için.
+*   **[Lucide React](https://lucide.dev/):** Güzel ve tutarlı ikonlar.
+*   **[Sonner](https://sonner.emilkowal.ski/):** Şık bildirimler (toast) için.
+
+## 🚀 Kurulum ve Çalıştırma
+
+Projeyi yerel makinenizde çalıştırmak için aşağıdaki adımları izleyin:
+
+1.  **Projeyi Klonlayın:**
+    ```bash
+    git clone https://github.com/kullaniciadi/done-app.git
+    cd done-app
+    ```
+
+2.  **Bağımlılıkları Yükleyin:**
+    ```bash
+    npm install
+    ```
+
+3.  **Uygulamayı Başlatın:**
+    ```bash
+    npm run dev
+    ```
+
+4.  **Tarayıcıda Açın:**
+    Terminalde belirtilen adrese (genellikle `http://localhost:5173`) gidin.
+
+## 🤝 Katkıda Bulunma
+
+Katkılarınızı bekliyoruz! Bir hata bulursanız veya yeni bir özellik eklemek isterseniz, lütfen bir "issue" açın veya "pull request" gönderin.
+
+## 👨‍💻 Geliştirici
+
+Bu proje **Onur Keskin** tarafından geliştirilmiştir.
+
+---
+
+*Done App ile işlerinizi halledin!* 💪
