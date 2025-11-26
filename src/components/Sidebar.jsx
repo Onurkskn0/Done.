@@ -1,5 +1,5 @@
 import React from 'react'
-import { Check } from 'lucide-react'
+import { Check, Heart } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const CATEGORIES = [
@@ -9,7 +9,7 @@ const CATEGORIES = [
     { id: 'health', label: 'Sağlık', color: 'bg-emerald-500', text: 'text-emerald-600', border: 'border-emerald-200', bgLight: 'bg-emerald-50' },
 ]
 
-export function Sidebar({ selectedCategory, onSelectCategory, todos, darkMode }) {
+export function Sidebar({ selectedCategory, onSelectCategory, todos, darkMode, onOpenSupport }) {
     const getCategoryCount = (categoryId) => {
         return todos.filter(t => t.category === categoryId && !t.completed).length
     }
@@ -125,6 +125,15 @@ export function Sidebar({ selectedCategory, onSelectCategory, todos, darkMode })
                         </span>
                     </div>
                 </div>
+
+                {/* Support Button */}
+                <button
+                    onClick={onOpenSupport}
+                    className="w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-lg shadow-pink-500/30 hover:shadow-pink-500/40 hover:scale-[1.02] transition-all font-bold mt-auto"
+                >
+                    <Heart className="w-5 h-5 fill-white" />
+                    Destek Ol
+                </button>
             </div>
         </aside>
     )

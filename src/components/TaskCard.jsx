@@ -1,7 +1,7 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { GripVertical, Check, Trash2, Edit2, Calendar as CalendarIcon } from 'lucide-react'
+import { GripVertical, Check, Trash2, Edit2, Calendar as CalendarIcon, ChevronDown, ChevronUp } from 'lucide-react'
 import * as icons from 'lucide-react'
 
 const CATEGORIES = [
@@ -18,6 +18,8 @@ const PRIORITIES = {
 }
 
 export function TaskCard({ todo, onToggle, onDelete, onUpdate, darkMode, isEditing, setEditingId }) {
+    const [showSubtasks, setShowSubtasks] = useState(false)
+
     const {
         attributes,
         listeners,
@@ -26,6 +28,13 @@ export function TaskCard({ todo, onToggle, onDelete, onUpdate, darkMode, isEditi
         transition,
         isDragging,
     } = useSortable({ id: todo.id })
+
+    const handleSubtaskToggle = (subtaskId) => {
+        const updatedSubtasks = todo.subtasks.map(st =>
+            st.id === subtaskId ? { ...st, completed: !st.completed } : st
+        )
+        onUpdate(todo.id, { ...todo, subtasks: updatedSubtasks })
+    }
 
     const style = {
         transform: CSS.Transform.toString(transform),
@@ -68,8 +77,44 @@ export function TaskCard({ todo, onToggle, onDelete, onUpdate, darkMode, isEditi
                 </button>
 
                 {/* Content */}
+                {/* Content */}
                 <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-2">
+                    <h3
+                        onClick={() => setEditingId(todo.id)}
+                        className={`text-xl font-bold tracking-tight leading-snug cursor-pointer hover:text-indigo-500 transition-colors mb-2 ${todo.completed ? 'line-through decoration-2 decoration-slate-400' : ''
+                            } ${darkMode ? 'text-white' : 'text-slate-800'}`}
+                    >
+                        {todo.text}
+                    </h3>
+                    {todo.description && (
+                        <div className={`text-sm pl-3 py-1 border-l-2 ${darkMode ? 'border-indigo-900/50 text-slate-400' : 'border-indigo-100 text-slate-500'}`}>
+                            <p className="line-clamp-2">
+                                {todo.description}
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Subtasks List */}
+                    {showSubtasks && todo.subtasks && todo.subtasks.length > 0 && (
+                        <div className="mt-3 space-y-1.5 pl-1" onClick={(e) => e.stopPropagation()}>
+                            {todo.subtasks.map(st => (
+                                <div key={st.id} className="flex items-center gap-2 group">
+                                    <input
+                                        type="checkbox"
+                                        checked={st.completed}
+                                        onChange={() => handleSubtaskToggle(st.id)}
+                                        className="w-3.5 h-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer flex-shrink-0"
+                                    />
+                                    <span className={`text-xs leading-tight ${st.completed ? 'line-through text-slate-400' : darkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+                                        {st.text}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Badges & Meta */}
+                    <div className="flex flex-wrap items-center gap-2 mt-3">
                         {TaskIcon && (
                             <div className={`p-1.5 rounded-lg bg-white ${isHeart ? 'text-red-500' : category.text}`}>
                                 <TaskIcon className="w-4 h-4" />
@@ -78,28 +123,30 @@ export function TaskCard({ todo, onToggle, onDelete, onUpdate, darkMode, isEditi
                         <span className={`text-[10px] font-bold px-2 py-1 rounded-md tracking-wide bg-white ${category.text}`}>
                             {category.label}
                         </span>
+                        {todo.subtasks && todo.subtasks.length > 0 && (
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation()
+                                    setShowSubtasks(!showSubtasks)
+                                }}
+                                className="text-[10px] font-bold px-2 py-1 rounded-md bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300 flex items-center gap-1 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+                            >
+                                <span className={todo.subtasks.every(st => st.completed) ? 'text-green-600 dark:text-green-400' : ''}>
+                                    {todo.subtasks.filter(st => st.completed).length}/{todo.subtasks.length}
+                                </span>
+                                {showSubtasks ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                            </button>
+                        )}
                         <span className={`text-[10px] font-bold px-2 py-1 rounded-md ${PRIORITIES[todo.priority].bg} ${PRIORITIES[todo.priority].color}`}>
                             {PRIORITIES[todo.priority].label}
                         </span>
+                        {todo.date && (
+                            <div className={`flex items-center gap-1.5 text-xs font-medium ml-auto ${darkMode ? 'text-slate-500' : 'text-slate-500'}`}>
+                                <CalendarIcon className="w-3.5 h-3.5" />
+                                {todo.date.split('-').reverse().join('.')}
+                            </div>
+                        )}
                     </div>
-                    <h3
-                        onClick={() => setEditingId(todo.id)}
-                        className={`text-lg font-bold leading-snug cursor-pointer hover:text-indigo-500 transition-colors ${todo.completed ? 'line-through decoration-2 decoration-slate-400' : ''
-                            } ${darkMode ? 'text-white' : 'text-slate-800'}`}
-                    >
-                        {todo.text}
-                    </h3>
-                    {todo.description && (
-                        <p className={`text-sm mt-2 line-clamp-2 ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                            {todo.description}
-                        </p>
-                    )}
-                    {todo.date && (
-                        <div className={`flex items-center gap-1.5 mt-3 text-xs font-medium ${darkMode ? 'text-slate-500' : 'text-slate-500'}`}>
-                            <CalendarIcon className="w-3.5 h-3.5" />
-                            {todo.date.split('-').reverse().join('.')}
-                        </div>
-                    )}
                 </div>
 
                 {/* Actions */}

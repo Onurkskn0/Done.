@@ -24,6 +24,7 @@ import {
   AlignLeft,
   Menu,
   X,
+  ListTodo,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -33,6 +34,14 @@ import { PrioritySelector } from './components/PrioritySelector';
 import { Sidebar } from './components/Sidebar';
 import { Button } from './components/ui/button';
 import { EditTaskDialog } from './components/EditTaskDialog';
+import { PomodoroTimer } from './components/PomodoroTimer';
+import { SupportDialog } from './components/SupportDialog';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { LoginScreen } from './components/auth/LoginScreen';
+import { RegisterScreen } from './components/auth/RegisterScreen';
+import { supabase } from './lib/supabase';
+import { LogIn, LogOut } from 'lucide-react';
+import { Toaster, toast } from 'sonner';
 
 const CATEGORIES = [
   { id: 'personal', label: 'Kişisel', color: 'bg-blue-500', text: 'text-blue-600', border: 'border-blue-200', bgLight: 'bg-blue-50' },
@@ -47,40 +56,87 @@ const PRIORITIES = {
   high: { label: 'Yüksek', color: 'text-red-700 dark:text-red-300', bg: 'bg-red-200 dark:bg-red-900/50' }
 };
 
-export default function App() {
+function MainApp({ setShowAuth }) {
+  const { user, logout } = useAuth();
   // Theme - Dark mode as default
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('theme');
-      return saved ? saved === 'dark' : true; // Default to dark
+      return localStorage.getItem('theme') !== 'light';
     }
     return true;
   });
 
   // Data
-  const [todos, setTodos] = useState(() => {
-    try {
-      const saved = localStorage.getItem('todos-v3');
-      return saved ? JSON.parse(saved) : [];
-    } catch { return []; }
-  });
+  const [todos, setTodos] = useState([]);
 
   // Form States
   const [inputValue, setInputValue] = useState('');
   const [descValue, setDescValue] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('personal');
-  const [selectedPriority, setSelectedPriority] = useState('low');
+  const [selectedPriority, setSelectedPriority] = useState('medium');
   const [isDescOpen, setIsDescOpen] = useState(true);
+  const [isSubtasksOpen, setIsSubtasksOpen] = useState(false);
+  const [subtasks, setSubtasks] = useState([]);
+  const [newSubtask, setNewSubtask] = useState('');
+  const [isSupportOpen, setIsSupportOpen] = useState(false);
 
   // UI States
   const [filter, setFilter] = useState('all');
-  const [viewMode, setViewMode] = useState('list');
-  const [editingId, setEditingId] = useState(null);
   const [categoryFilter, setCategoryFilter] = useState('all');
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-
-  // Clock
+  const [viewMode, setViewMode] = useState('list'); // 'list' or 'grid'
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [editingId, setEditingId] = useState(null);
+
+  // Effects
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Load todos
+  useEffect(() => {
+    const loadTodos = async () => {
+      if (user) {
+        // Load from Supabase
+        const { data, error } = await supabase
+          .from('todos')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (data) setTodos(data);
+      } else {
+        // Load from LocalStorage (Guest)
+        const savedTodos = localStorage.getItem('todos');
+        if (savedTodos) {
+          setTodos(JSON.parse(savedTodos));
+        } else {
+          setTodos([]);
+        }
+      }
+    };
+    loadTodos();
+  }, [user]);
+
+  // Save todos (Only for Guest)
+  // For Supabase users, we will save on each action (add, update, delete)
+  useEffect(() => {
+    if (!user) {
+      localStorage.setItem('todos', JSON.stringify(todos));
+    }
+  }, [todos, user]);
+
+  useEffect(() => {
+    localStorage.setItem('theme', darkMode ? 'dark' : 'light');
+  }, [darkMode]);
+
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [darkMode]);
 
   // Drag and Drop Sensors
   const sensors = useSensors(
@@ -94,64 +150,126 @@ export default function App() {
     })
   );
 
-  // Effects
-  useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem('todos-v3', JSON.stringify(todos));
-  }, [todos]);
-
-  useEffect(() => {
-    localStorage.setItem('theme', darkMode ? 'dark' : 'light');
-    if (darkMode) document.documentElement.classList.add('dark');
-    else document.documentElement.classList.remove('dark');
-  }, [darkMode]);
-
   // Functions
-  const handleAddTodo = (e) => {
+  const handleAddSubtask = (e) => {
+    e.preventDefault();
+    if (!newSubtask.trim()) return;
+    setSubtasks([...subtasks, { id: Date.now(), text: newSubtask.trim(), completed: false }]);
+    setNewSubtask('');
+  };
+
+  const handleRemoveSubtask = (id) => {
+    setSubtasks(subtasks.filter(st => st.id !== id));
+  };
+
+  const handleAddTodo = async (e) => {
     e.preventDefault();
     if (!inputValue.trim()) return;
 
     const newTodo = {
-      id: Date.now(),
+      id: Date.now(), // Temporary ID for optimistic UI
       text: inputValue.trim(),
       description: descValue.trim(),
       completed: false,
       category: selectedCategory,
       priority: selectedPriority,
-      createdAt: new Date().toISOString()
+      subtasks: subtasks,
+      created_at: new Date().toISOString()
     };
 
+    // Optimistic UI update
     setTodos([newTodo, ...todos]);
 
     // Reset Form
     setInputValue('');
     setDescValue('');
-  };
+    setSubtasks([]);
+    setNewSubtask('');
+    setIsSubtasksOpen(false);
 
-  const toggleTodo = (id) => {
-    const todo = todos.find(t => t.id === id);
-    if (!todo.completed) {
-      // Enhanced confetti effect
-      confetti({
-        particleCount: 100,
-        spread: 70,
-        origin: { y: 0.6 },
-        colors: ['#6366f1', '#8b5cf6', '#ec4899', '#10b981']
-      });
+    confetti({
+      particleCount: 100,
+      spread: 70,
+      origin: { y: 0.6 }
+    });
+
+    if (user) {
+      // Save to Supabase
+      const { data, error } = await supabase
+        .from('todos')
+        .insert([{
+          user_id: user.id,
+          text: newTodo.text,
+          description: newTodo.description,
+          completed: newTodo.completed,
+          category: newTodo.category,
+          priority: newTodo.priority,
+          subtasks: newTodo.subtasks
+        }])
+        .select();
+
+      if (data) {
+        // Update with real ID from DB
+        setTodos(prev => prev.map(t => t.id === newTodo.id ? { ...t, id: data[0].id } : t));
+      }
     }
-    setTodos(todos.map(t => t.id === id ? { ...t, completed: !t.completed } : t));
   };
 
-  const deleteTodo = (id) => {
-    setTodos(todos.filter(t => t.id !== id));
+  const toggleTodo = async (id) => {
+    const todoToToggle = todos.find(t => t.id === id);
+    if (!todoToToggle) return;
+
+    const newCompleted = !todoToToggle.completed;
+
+    // Optimistic UI
+    setTodos(todos.map(todo => {
+      if (todo.id === id) {
+        if (newCompleted) {
+          confetti({
+            particleCount: 50,
+            spread: 60,
+            origin: { y: 0.7 },
+            colors: ['#10B981', '#34D399']
+          });
+        }
+        return { ...todo, completed: newCompleted };
+      }
+      return todo;
+    }));
+
+    if (user) {
+      await supabase
+        .from('todos')
+        .update({ completed: newCompleted })
+        .eq('id', id);
+    }
   };
 
-  const updateTodo = (id, updates) => {
-    setTodos(todos.map(t => t.id === id ? { ...t, ...updates } : t));
+  const deleteTodo = async (id) => {
+    // Optimistic UI
+    setTodos(todos.filter(todo => todo.id !== id));
+
+    if (user) {
+      await supabase
+        .from('todos')
+        .delete()
+        .eq('id', id);
+    }
+  };
+
+  const updateTodo = async (id, updatedData) => {
+    // Optimistic UI
+    setTodos(todos.map(todo =>
+      todo.id === id ? { ...todo, ...updatedData } : todo
+    ));
+    setEditingId(null);
+
+    if (user) {
+      await supabase
+        .from('todos')
+        .update(updatedData)
+        .eq('id', id);
+    }
   };
 
   const handleDragEnd = (event) => {
@@ -167,14 +285,15 @@ export default function App() {
   };
 
   // Filtered Todos
-  const filteredTodos = todos.filter(t => {
-    if (filter === 'active' && t.completed) return false;
-    if (filter === 'completed' && !t.completed) return false;
-    if (categoryFilter !== 'all' && t.category !== categoryFilter) return false;
+  const filteredTodos = todos.filter(todo => {
+    if (filter === 'active') return !todo.completed;
+    if (filter === 'completed') return todo.completed;
+    if (categoryFilter !== 'all' && todo.category !== categoryFilter) return false;
     return true;
   });
 
   // Clock Component
+  const time = currentTime.getHours();
   const DigitalClock = () => {
     const hours = currentTime.getHours().toString().padStart(2, '0');
     const minutes = currentTime.getMinutes().toString().padStart(2, '0');
@@ -195,16 +314,34 @@ export default function App() {
   return (
     <div className={`min-h-screen flex transition-colors duration-300 ${darkMode ? 'bg-[#0f172a]' : 'bg-[#f8fafc]'}`}>
 
-      {/* Sidebar - Desktop */}
-      <div className={`hidden lg:block ${sidebarOpen ? 'w-64' : 'w-0'} transition-all duration-300`}>
-        {sidebarOpen && (
+      {/* Mobile Sidebar Overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <div className={`
+        fixed lg:static inset-y-0 left-0 z-50
+        transform transition-transform duration-300 ease-in-out
+        ${sidebarOpen ? 'translate-x-0 w-64' : '-translate-x-full lg:w-0 lg:translate-x-0'}
+        bg-white dark:bg-slate-900 lg:bg-transparent lg:dark:bg-transparent
+        border-r lg:border-r-0 border-slate-200 dark:border-slate-800
+      `}>
+        <div className={`h-full overflow-y-auto ${!sidebarOpen && 'lg:hidden'}`}>
           <Sidebar
             selectedCategory={categoryFilter}
-            onSelectCategory={setCategoryFilter}
+            onSelectCategory={(cat) => {
+              setCategoryFilter(cat);
+              if (window.innerWidth < 1024) setSidebarOpen(false);
+            }}
             todos={todos}
             darkMode={darkMode}
+            onOpenSupport={() => setIsSupportOpen(true)}
           />
-        )}
+        </div>
       </div>
 
       {/* Main Content */}
@@ -216,22 +353,25 @@ export default function App() {
             <div className="flex items-center gap-4">
               <button
                 onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="lg:block p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               >
                 <Menu className="w-6 h-6" />
               </button>
 
               <div>
                 <h1 className={`text-3xl font-black tracking-tight ${darkMode ? 'text-white' : 'text-slate-800'}`}>
-                  TaskFlow
+                  Merhaba, {user?.user_metadata?.name || user?.email?.split('@')[0] || 'Misafir'}
                 </h1>
                 <p className={`text-sm font-medium ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>
-                  Gününün hakimi ol.
+                  Bugün {todos.filter(t => !t.completed).length} görevin var
                 </p>
               </div>
             </div>
 
             <div className="flex items-center gap-6">
+              <div className="hidden md:block">
+                <PomodoroTimer />
+              </div>
               <div className="hidden sm:block">
                 <DigitalClock />
               </div>
@@ -244,6 +384,27 @@ export default function App() {
               >
                 {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
               </button>
+
+              {user ? (
+                <button
+                  onClick={() => {
+                    logout();
+                    toast.success('Başarıyla çıkış yapıldı.');
+                  }}
+                  className="p-3 rounded-full bg-red-50 text-red-500 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40 transition-colors"
+                  title="Çıkış Yap"
+                >
+                  <LogOut className="w-5 h-5" />
+                </button>
+              ) : (
+                <button
+                  onClick={() => setShowAuth(true)}
+                  className="p-3 rounded-full bg-indigo-50 text-indigo-600 hover:bg-indigo-100 dark:bg-indigo-900/20 dark:hover:bg-indigo-900/40 transition-colors"
+                  title="Giriş Yap / Kayıt Ol"
+                >
+                  <LogIn className="w-5 h-5" />
+                </button>
+              )}
             </div>
           </header>
 
@@ -303,17 +464,71 @@ export default function App() {
                 <PrioritySelector value={selectedPriority} onChange={setSelectedPriority} />
 
 
+                {/* Subtasks Toggle */}
+                <button
+                  type="button"
+                  onClick={() => setIsSubtasksOpen(!isSubtasksOpen)}
+                  className={`ml-auto p-2 rounded-lg transition-colors ${isSubtasksOpen
+                    ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400'
+                    : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                >
+                  <ListTodo className="w-5 h-5" />
+                </button>
+
                 {/* Description Toggle */}
                 <button
                   type="button"
                   onClick={() => setIsDescOpen(!isDescOpen)}
-                  className={`ml-auto p-2 rounded-lg transition-colors ${isDescOpen
+                  className={`p-2 rounded-lg transition-colors ${isDescOpen
                     ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400'
                     : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
                     }`}
                 >
                   <AlignLeft className="w-5 h-5" />
                 </button>
+              </div>
+
+              {/* Subtasks Area */}
+              <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isSubtasksOpen ? 'max-h-48 opacity-100' : 'max-h-0 opacity-0'
+                }`}>
+                <div className={`p-4 border-t ${darkMode ? 'border-slate-700/50' : 'border-slate-100'}`}>
+                  <div className="flex gap-2 mb-2">
+                    <input
+                      id="new-subtask-input"
+                      name="newSubtask"
+                      value={newSubtask}
+                      onChange={(e) => setNewSubtask(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddSubtask(e))}
+                      placeholder="Alt görev ekle..."
+                      className={`flex-1 h-9 rounded-md border bg-transparent px-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${darkMode
+                        ? 'border-slate-700 text-white placeholder:text-slate-500'
+                        : 'border-slate-200 text-slate-800 placeholder:text-slate-400'
+                        }`}
+                    />
+                    <Button type="button" onClick={handleAddSubtask} size="sm" variant="secondary">
+                      Ekle
+                    </Button>
+                  </div>
+
+                  <div className="flex flex-col gap-1 max-h-[100px] overflow-y-auto">
+                    {subtasks.map(st => (
+                      <div key={st.id} className="flex items-center gap-2 group p-1 rounded hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                        <div className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-600" />
+                        <span className={`flex-1 text-sm ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+                          {st.text}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveSubtask(st.id)}
+                          className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-red-500 transition-opacity"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
 
               {/* Description Area */}
@@ -410,7 +625,12 @@ export default function App() {
             </DndContext>
           )}
         </div>
+
+        <footer className="mt-12 py-6 text-center text-sm font-medium text-slate-400 dark:text-slate-600">
+          Developed by Onur Keskin
+        </footer>
       </div>
+
 
       <EditTaskDialog
         todo={todos.find(t => t.id === editingId)}
@@ -418,6 +638,57 @@ export default function App() {
         onOpenChange={(open) => !open && setEditingId(null)}
         onSave={updateTodo}
       />
+
+      <SupportDialog
+        open={isSupportOpen}
+        onOpenChange={setIsSupportOpen}
+      />
     </div >
+  );
+}
+
+function AppWrapper() {
+  const { user, loading } = useAuth();
+  const [showAuth, setShowAuth] = useState(false);
+  const [authMode, setAuthMode] = useState('login'); // 'login' or 'register'
+
+  // Close auth screen when user logs in
+  useEffect(() => {
+    if (user) {
+      setShowAuth(false);
+    }
+  }, [user]);
+
+  if (loading) return null;
+
+  return (
+    <>
+      {showAuth && !user ? (
+        <div className="relative">
+          <button
+            onClick={() => setShowAuth(false)}
+            className="absolute top-4 right-4 z-50 p-2 text-slate-500 hover:text-slate-700 bg-white/50 rounded-full"
+          >
+            ✕ Kapat
+          </button>
+          {authMode === 'login' ? (
+            <LoginScreen onSwitchToRegister={() => setAuthMode('register')} />
+          ) : (
+            <RegisterScreen onSwitchToLogin={() => setAuthMode('login')} />
+          )}
+        </div>
+      ) : (
+        <MainApp setShowAuth={setShowAuth} />
+      )}
+      <Toaster position="bottom-center" richColors />
+    </>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppWrapper />
+    </AuthProvider>
   );
 }
