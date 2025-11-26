@@ -85,7 +85,7 @@ function MainApp({ setShowAuth }) {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [viewMode, setViewMode] = useState('list'); // 'list' or 'grid'
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 1024);
   const [editingId, setEditingId] = useState(null);
 
   // Effects
@@ -420,7 +420,7 @@ function MainApp({ setShowAuth }) {
                   type="text"
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
-                  placeholder="Bugün ne başarmak istiyorsun?"
+                  placeholder="Bugün ne yapacaksın?"
                   className={`flex-1 bg-transparent px-4 py-3 text-lg font-medium placeholder:text-slate-400 focus:outline-none ${darkMode ? 'text-white' : 'text-slate-800'
                     }`}
                 />
@@ -667,7 +667,7 @@ function AppWrapper() {
         <div className="relative">
           <button
             onClick={() => setShowAuth(false)}
-            className="absolute top-4 right-4 z-50 p-2 text-slate-500 hover:text-slate-700 bg-white/50 rounded-full"
+            className="absolute top-4 right-4 z-50 p-2 text-slate-500 hover:text-slate-700 dark:text-white dark:hover:text-slate-200 bg-white/50 dark:bg-slate-800/50 rounded-full"
           >
             ✕ Kapat
           </button>
