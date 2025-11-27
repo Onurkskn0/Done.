@@ -36,11 +36,7 @@ import { Button } from './components/ui/button';
 import { EditTaskDialog } from './components/EditTaskDialog';
 import { PomodoroTimer } from './components/PomodoroTimer';
 import { SupportDialog } from './components/SupportDialog';
-import { AuthProvider, useAuth } from './context/AuthContext';
-import { LoginScreen } from './components/auth/LoginScreen';
-import { RegisterScreen } from './components/auth/RegisterScreen';
-import { supabase } from './lib/supabase';
-import { LogIn, LogOut } from 'lucide-react';
+
 import { Toaster, toast } from 'sonner';
 
 const CATEGORIES = [
@@ -56,8 +52,7 @@ const PRIORITIES = {
   high: { label: 'Yüksek', color: 'text-red-700 dark:text-red-300', bg: 'bg-red-200 dark:bg-red-900/50' }
 };
 
-function MainApp({ setShowAuth }) {
-  const { user, logout } = useAuth();
+function App() {
   // Theme - Dark mode as default
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -96,35 +91,18 @@ function MainApp({ setShowAuth }) {
 
   // Load todos
   useEffect(() => {
-    const loadTodos = async () => {
-      if (user) {
-        // Load from Supabase
-        const { data, error } = await supabase
-          .from('todos')
-          .select('*')
-          .order('created_at', { ascending: false });
-
-        if (data) setTodos(data);
-      } else {
-        // Load from LocalStorage (Guest)
-        const savedTodos = localStorage.getItem('todos');
-        if (savedTodos) {
-          setTodos(JSON.parse(savedTodos));
-        } else {
-          setTodos([]);
-        }
-      }
-    };
-    loadTodos();
-  }, [user]);
-
-  // Save todos (Only for Guest)
-  // For Supabase users, we will save on each action (add, update, delete)
-  useEffect(() => {
-    if (!user) {
-      localStorage.setItem('todos', JSON.stringify(todos));
+    const savedTodos = localStorage.getItem('todos');
+    if (savedTodos) {
+      setTodos(JSON.parse(savedTodos));
+    } else {
+      setTodos([]);
     }
-  }, [todos, user]);
+  }, []);
+
+  // Save todos
+  useEffect(() => {
+    localStorage.setItem('todos', JSON.stringify(todos));
+  }, [todos]);
 
   useEffect(() => {
     localStorage.setItem('theme', darkMode ? 'dark' : 'light');
@@ -192,27 +170,6 @@ function MainApp({ setShowAuth }) {
       spread: 70,
       origin: { y: 0.6 }
     });
-
-    if (user) {
-      // Save to Supabase
-      const { data, error } = await supabase
-        .from('todos')
-        .insert([{
-          user_id: user.id,
-          text: newTodo.text,
-          description: newTodo.description,
-          completed: newTodo.completed,
-          category: newTodo.category,
-          priority: newTodo.priority,
-          subtasks: newTodo.subtasks
-        }])
-        .select();
-
-      if (data) {
-        // Update with real ID from DB
-        setTodos(prev => prev.map(t => t.id === newTodo.id ? { ...t, id: data[0].id } : t));
-      }
-    }
   };
 
   const toggleTodo = async (id) => {
@@ -236,40 +193,17 @@ function MainApp({ setShowAuth }) {
       }
       return todo;
     }));
-
-    if (user) {
-      await supabase
-        .from('todos')
-        .update({ completed: newCompleted })
-        .eq('id', id);
-    }
   };
 
   const deleteTodo = async (id) => {
-    // Optimistic UI
     setTodos(todos.filter(todo => todo.id !== id));
-
-    if (user) {
-      await supabase
-        .from('todos')
-        .delete()
-        .eq('id', id);
-    }
   };
 
   const updateTodo = async (id, updatedData) => {
-    // Optimistic UI
     setTodos(todos.map(todo =>
       todo.id === id ? { ...todo, ...updatedData } : todo
     ));
     setEditingId(null);
-
-    if (user) {
-      await supabase
-        .from('todos')
-        .update(updatedData)
-        .eq('id', id);
-    }
   };
 
   const handleDragEnd = (event) => {
@@ -360,7 +294,7 @@ function MainApp({ setShowAuth }) {
 
               <div>
                 <h1 className={`text-3xl font-black tracking-tight ${darkMode ? 'text-white' : 'text-slate-800'}`}>
-                  Merhaba, {user?.user_metadata?.name || user?.email?.split('@')[0] || 'Misafir'}
+                  Merhaba
                 </h1>
                 <p className={`text-sm font-medium ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>
                   Bugün {todos.filter(t => !t.completed).length} görevin var
@@ -384,27 +318,6 @@ function MainApp({ setShowAuth }) {
               >
                 {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
               </button>
-
-              {user ? (
-                <button
-                  onClick={() => {
-                    logout();
-                    toast.success('Başarıyla çıkış yapıldı.');
-                  }}
-                  className="p-3 rounded-full bg-red-50 text-red-500 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40 transition-colors"
-                  title="Çıkış Yap"
-                >
-                  <LogOut className="w-5 h-5" />
-                </button>
-              ) : (
-                <button
-                  onClick={() => setShowAuth(true)}
-                  className="p-3 rounded-full bg-indigo-50 text-indigo-600 hover:bg-indigo-100 dark:bg-indigo-900/20 dark:hover:bg-indigo-900/40 transition-colors"
-                  title="Giriş Yap / Kayıt Ol"
-                >
-                  <LogIn className="w-5 h-5" />
-                </button>
-              )}
             </div>
           </header>
 
@@ -459,7 +372,6 @@ function MainApp({ setShowAuth }) {
                 <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-1" />
 
 
-                {/* Priority Selector */}
                 {/* Priority Selector */}
                 <PrioritySelector value={selectedPriority} onChange={setSelectedPriority} />
 
@@ -643,52 +555,9 @@ function MainApp({ setShowAuth }) {
         open={isSupportOpen}
         onOpenChange={setIsSupportOpen}
       />
+      <Toaster position="bottom-center" richColors />
     </div >
   );
 }
 
-function AppWrapper() {
-  const { user, loading } = useAuth();
-  const [showAuth, setShowAuth] = useState(false);
-  const [authMode, setAuthMode] = useState('login'); // 'login' or 'register'
-
-  // Close auth screen when user logs in
-  useEffect(() => {
-    if (user) {
-      setShowAuth(false);
-    }
-  }, [user]);
-
-  if (loading) return null;
-
-  return (
-    <>
-      {showAuth && !user ? (
-        <div className="relative">
-          <button
-            onClick={() => setShowAuth(false)}
-            className="absolute top-4 right-4 z-50 p-2 text-slate-500 hover:text-slate-700 dark:text-white dark:hover:text-slate-200 bg-white/50 dark:bg-slate-800/50 rounded-full"
-          >
-            ✕ Kapat
-          </button>
-          {authMode === 'login' ? (
-            <LoginScreen onSwitchToRegister={() => setAuthMode('register')} />
-          ) : (
-            <RegisterScreen onSwitchToLogin={() => setAuthMode('login')} />
-          )}
-        </div>
-      ) : (
-        <MainApp setShowAuth={setShowAuth} />
-      )}
-      <Toaster position="bottom-center" richColors />
-    </>
-  );
-}
-
-export default function App() {
-  return (
-    <AuthProvider>
-      <AppWrapper />
-    </AuthProvider>
-  );
-}
+export default App;
